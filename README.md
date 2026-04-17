@@ -38,5 +38,3 @@ python app.py
 
 ### 5. Start Crawling
 Open your web browser and navigate to `http://127.0.0.1:5000`. From the unified dashboard, enter a seed URL (e.g. `http://books.toscrape.com/`), specify a depth limit, and click **Start Crawl**. 
-
-The UI will provide live progress reporting, allowing you to browse search results and view an interactive visualization of the web graph in real-time!
