@@ -1,5 +1,6 @@
 import json
 import os
+import csv
 import pandas as pd
 from storage.db import get_all_pages, get_all_links
 
@@ -53,7 +54,7 @@ def export_csv(filename: str = "pages.csv") -> str:
     ]
     df = pd.DataFrame(rows)
     path = os.path.join(DATA_DIR, filename)
-    df.to_csv(path, index=False, encoding="utf-8")
+    df.to_csv(path, index=False, encoding="utf-8", quoting=csv.QUOTE_ALL, escapechar='\\')
 
     print(f"[Export] CSV saved: {path}  ({len(rows)} pages)")
     return path
@@ -68,7 +69,7 @@ def export_links_csv(filename: str = "links.csv") -> str:
     rows = [{"source": l["source_url"], "target": l["target_url"]} for l in links]
     df = pd.DataFrame(rows)
     path = os.path.join(DATA_DIR, filename)
-    df.to_csv(path, index=False, encoding="utf-8")
+    df.to_csv(path, index=False, encoding="utf-8", quoting=csv.QUOTE_ALL, escapechar='\\')
 
     print(f"[Export] Links CSV saved: {path}  ({len(rows)} edges)")
     return path
