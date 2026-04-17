@@ -20,7 +20,7 @@ import threading
 import datetime
 
 # Add project root to path so we can import storage/analysis modules
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, os.path.dirname(__file__))
 
 from flask import Flask, render_template, request, jsonify, redirect, url_for, send_file
 
@@ -29,7 +29,7 @@ from analysis.keyword_search import count_keyword_frequency, top_words
 from analysis.link_graph import build_graph, get_most_linked
 from analysis.export import export_json, export_csv
 
-app = Flask(__name__)
+app = Flask(__name__, template_folder='ui/templates', static_folder='ui/static')
 
 # Global crawl state
 crawl_status = {"running": False, "message": "Idle", "session_id": None}
@@ -80,7 +80,7 @@ def start_crawl():
         global crawl_status
         crawl_status = {"running": True, "message": f"Crawling {seed_url} (depth={depth})...", "session_id": session_id}
 
-        project_root = os.path.join(os.path.dirname(__file__), '..')
+        project_root = os.path.dirname(__file__)
 
         cmd = [
             sys.executable, "-m", "scrapy", "crawl", "web_spider",
