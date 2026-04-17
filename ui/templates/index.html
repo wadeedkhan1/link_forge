@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+{% block title %}Crawler{% endblock %}
+
+{% block content %}
+<div class="container google-home">
+  <div class="google-logo">
+    <span class="g-blue">C</span><span class="g-red">r</span><span class="g-yellow">a</span><span
+      class="g-blue">w</span><span class="g-green">l</span><span class="g-red">e</span><span class="g-yellow">r</span>
+  </div>
+
+  <form method="POST" action="/crawl" id="crawl-form" class="search-form">
+    <div class="search-box">
+      <svg class="search-icon" focusable="false" viewBox="0 0 24 24">
+        <path
+          d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z">
+        </path>
+      </svg>
+      <input type="url" name="seed_url" id="seed_url" class="search-input" required autofocus>
+      <span id="crawl-status-pill" class="crawl-pill crawl-pill--ready" title="Crawler status">● Ready</span>
+    </div>
+
+    <div class="search-buttons">
+      <select name="depth" class="btn" style="border:1px solid transparent; background:#f8f9fa;">
+        <option value="1">Depth 1</option>
+        <option value="2" selected>Depth 2</option>
+        <option value="3">Depth 3</option>
+      </select>
+      <button type="submit" class="btn" id="crawl-btn">Search</button>
+    </div>
+  </form>
+
+  <div class="results-container" id="results-container">
+    <div class="status-indicator">
+      <span id="status-text">{{ crawl_status.message }}</span>
+      <span class="status-badge" id="page-count">{{ stats.page_count }} results</span>
+    </div>
+
+    <div id="live-feed">
+      <!-- Live results inject here -->
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  let lastCount = {{ stats.page_count }};
+  let isRunning = {{ 'true' if crawl_status.running else 'false' }};
+
+  function addResultItem(page) {
+    const feed = document.getElementById('live-feed');
+    const existing = document.getElementById('page-' + page.url);
+    if (existing) return;
+
+    const item = document.createElement('div');
+    item.className = 'result-item';
+    item.id = 'page-' + page.url;
+    item.innerHTML = `
+      <div class="result-url">
+        <cite>${page.url}</cite> <span class="status-badge">Depth ${page.depth}</span>
+      </div>
+      <a href="${page.url}" target="_blank" class="result-title">${page.title}</a>
+      <div class="result-snippet">HTTP Status: ${page.status_code}. Indexed in active session.</div>
+    `;
+    feed.prepend(item);
+  }
+
+  function updatePill(running, message) {
+    const pill = document.getElementById('crawl-status-pill');
+    if (!pill) return;
+    if (running) {
+      const match = message.match(/https?:\/\/([^\s/()]+)/);
+      const domain = match ? match[1] : 'domain';
+      pill.textContent = '● Crawling ' + domain + '…';
+      pill.className = 'crawl-pill crawl-pill--busy';
+      pill.title = message;
+    } else {
+      pill.textContent = '● Ready';
+      pill.className = 'crawl-pill crawl-pill--ready';
+      pill.title = 'Crawler is idle — ready to start';
+    }
+  }
+
+  function pollStatus() {
+    fetch('/status').then(r => r.json()).then(data => {
+      document.getElementById('status-text').textContent = data.message;
+      document.getElementById('page-count').textContent = data.page_count + " results";
+
+      document.getElementById('crawl-btn').disabled = data.running;
+      updatePill(data.running, data.message);
+
+      if (data.page_count !== lastCount) {
+        lastCount = data.page_count;
+        fetchRecent();
+      }
+
+      if (data.running || isRunning) {
+        isRunning = data.running;
+        setTimeout(pollStatus, 1500);
+      }
+    });
+  }
+
+  function fetchRecent() {
+    fetch('/api/recent?n=20').then(r => r.json()).then(pages => {
+      const feed = document.getElementById('live-feed');
+      feed.innerHTML = '';
+      pages.forEach(addResultItem);
+    });
+  }
+
+  fetchRecent();
+  pollStatus();
+
+  document.getElementById('crawl-form').addEventListener('submit', function () {
+    isRunning = true;
+    document.getElementById('crawl-btn').disabled = true;
+    document.getElementById('crawl-btn').textContent = 'Searching...';
+    document.getElementById('live-feed').innerHTML = '';
+    const url = document.getElementById('seed_url').value;
+    updatePill(true, 'Crawling ' + url);
+    setTimeout(pollStatus, 1000);
+  });
+</script>
+{% endblock %}

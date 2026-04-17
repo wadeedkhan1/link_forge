@@ -1,0 +1,21 @@
+# --- HTTP & HTML Parsing ---
+requests==2.31.0
+beautifulsoup4==4.12.3
+lxml==5.2.1
+
+# --- JavaScript Rendering ---
+selenium==4.20.0
+webdriver-manager==4.0.1
+
+# --- Crawling Framework ---
+Scrapy==2.11.1
+
+# --- Web UI ---
+Flask==3.0.3
+
+# --- Export ---
+pandas==2.2.2
+
+# --- Utilities ---
+fake-useragent==1.5.1
+python-dotenv==1.0.1

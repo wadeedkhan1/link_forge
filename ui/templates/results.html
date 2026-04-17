@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}Results - Crawler{% endblock %}
+
+{% block content %}
+<div class="top-search-bar">
+  <div class="top-search-logo">
+    <span class="g-blue">C</span><span class="g-red">r</span><span class="g-yellow">a</span><span
+      class="g-blue">w</span><span class="g-green">l</span><span class="g-red">e</span><span class="g-yellow">r</span>
+  </div>
+  <form method="GET" action="{{ url_for('search') }}" style="flex:1; max-width:600px; display:flex">
+    <input type="text" name="q" class="search-input"
+      style="border:1px solid #dfe1e5; border-radius:24px; padding:10px 20px; width:100%; box-shadow:0 1px 6px rgba(32,33,36,.28)"
+      placeholder="Search the index...">
+  </form>
+</div>
+
+<div class="container" style="max-width:800px; margin:0 100px;">
+  <div style="color:var(--text-muted); font-size:14px; margin-bottom:20px;">
+    About {{ total }} results (active DB)
+  </div>
+
+  <div class="results-container" style="margin-top:0">
+    {% for page in pages %}
+    <div class="result-item">
+      <div class="result-url">
+        <cite>{{ page['url'] }}</cite>
+        <span class="status-badge"
+          style="background:{% if page['status_code']==200 %}#e6f4ea{% else %}#fce8e6{% endif %}; color:{% if page['status_code']==200 %}#137333{% else %}#c5221f{% endif %}">
+          HTTP {{ page['status_code'] }}
+        </span>
+        <span class="status-badge">Depth {{ page['depth'] }}</span>
+      </div>
+      <a href="{{ page['url'] }}" target="_blank" class="result-title">{{ page['title'] or page['url'] }}</a>
+      <div class="result-snippet">
+        {{ (page['text'] or '')[:160] }}...
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <div class="pagination">
+    {% if page_num > 1 %}
+    <a href="?page={{ page_num - 1 }}">Previous</a>
+    {% endif %}
+
+    {% for p in page_range %}
+    <a href="?page={{ p }}" class="{% if p == page_num %}active{% endif %}">{{ p }}</a>
+    {% endfor %}
+
+    {% if page_num < total_pages %} <a href="?page={{ page_num + 1 }}">Next</a>
+      {% endif %}
+  </div>
+
+</div>
+{% endblock %}

@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Crawler{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  {% block head %}{% endblock %}
+</head>
+<body>
+
+  <nav class="navbar">
+    <div class="nav-links" style="margin-left: auto;">
+      <a href="{{ url_for('index') }}" class="nav-link">Home</a>
+      <a href="{{ url_for('results') }}" class="nav-link">Results</a>
+      <a href="{{ url_for('search') }}" class="nav-link">Search</a>
+      <a href="{{ url_for('graph') }}" class="nav-link">Graph</a>
+      <a href="{{ url_for('export_csv_route') }}" class="nav-link">Export CSV</a>
+    </div>
+  </nav>
+
+  {% block content %}{% endblock %}
+
+  {% block scripts %}{% endblock %}
+</body>
+</html>

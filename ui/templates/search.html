@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Search: {{ keyword or '' }} - Crawler{% endblock %}
+
+{% block content %}
+<div class="top-search-bar">
+  <div class="top-search-logo">
+    <span class="g-blue">C</span><span class="g-red">r</span><span class="g-yellow">a</span><span class="g-blue">w</span><span class="g-green">l</span><span class="g-red">e</span><span class="g-yellow">r</span>
+  </div>
+  <form method="GET" action="{{ url_for('search') }}" style="flex:1; max-width:600px; display:flex">
+    <input type="text" name="q" id="search-input" value="{{ keyword }}" class="search-input" style="border:1px solid #dfe1e5; border-radius:24px; padding:10px 20px; width:100%; box-shadow:0 1px 6px rgba(32,33,36,.28)" placeholder="Search the index..." autofocus autocomplete="off">
+  </form>
+</div>
+
+<div class="container" style="max-width:800px; margin:0 100px;">
+  {% if keyword %}
+    <div style="color:var(--text-muted); font-size:14px; margin-bottom:20px;">
+      About {{ results|length }} results for "{{ keyword }}"
+    </div>
+
+    {% if results %}
+      <div class="results-container" style="margin-top:0">
+        {% for r in results %}
+        <div class="result-item">
+          <div class="result-url">
+            <cite>{{ r['url'] }}</cite> 
+            <span class="status-badge">Matches: {{ r['count'] }}</span>
+          </div>
+          <a href="{{ r['url'] }}" target="_blank" class="result-title">{{ r['title'] or r['url'] }}</a>
+          <div class="result-snippet">
+            {{ r['text'] }}...
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div style="margin-top:40px;">
+        <p style="font-size:16px;">Your search - <strong>{{ keyword }}</strong> - did not match any documents.</p>
+        <p style="margin-top:15px; color:var(--text-muted)">Suggestions:</p>
+        <ul style="margin-left:30px; margin-top:10px; color:var(--text-muted)">
+          <li>Make sure all words are spelled correctly.</li>
+          <li>Try different keywords.</li>
+          <li>Try more general keywords.</li>
+        </ul>
+      </div>
+    {% endif %}
+  {% endif %}
+</div>
+{% endblock %}

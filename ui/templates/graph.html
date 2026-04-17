@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% block title %}Topology - Crawler{% endblock %}
+
+{% block head %}
+<script src="https://unpkg.com/vis-network@9.1.9/dist/vis-network.min.js"></script>
+<link href="https://unpkg.com/vis-network@9.1.9/dist/dist/vis-network.min.css" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<div class="top-search-bar">
+  <div class="top-search-logo">
+    <span class="g-blue">C</span><span class="g-red">r</span><span class="g-yellow">a</span><span class="g-blue">w</span><span class="g-green">l</span><span class="g-red">e</span><span class="g-yellow">r</span>
+  </div>
+  <div style="color:var(--text-muted); padding-top:5px; font-size:18px;">
+    Network Topology (Active DB Session)
+  </div>
+</div>
+
+<div class="container" style="max-width:1000px; padding:20px;">
+  <div class="graph-controls">
+    <label style="color:var(--text-muted); font-size:14px;">Nodes limit:</label>
+    <select id="node-count" class="form-select">
+      <option value="50">50</option>
+      <option value="80" selected>80</option>
+      <option value="120">120</option>
+    </select>
+    <button class="btn" onclick="loadGraph()">Render</button>
+    <span id="graph-info" style="color:var(--text-muted); font-size:13px; margin-left:15px;"></span>
+  </div>
+
+  <div id="graph-container"></div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  let network = null;
+
+  function loadGraph() {
+    const maxNodes = document.getElementById('node-count').value;
+    document.getElementById('graph-info').textContent = 'Loading...';
+
+    fetch(`/api/graph?max_nodes=${maxNodes}`)
+      .then(r => r.json())
+      .then(data => {
+        const container = document.getElementById('graph-container');
+
+        // Google aesthetic colors for graph
+        const nodes = new vis.DataSet(data.nodes.map(n => ({
+          id:    n.id,
+          label: n.label,
+          color: {
+            background: '#ffffff',
+            border:     '#4285f4', // Google blue
+            highlight:  { background: '#e8f0fe', border: '#1a73e8' },
+            hover:      { background: '#f1f3f4', border: '#ea4335' }, // Google red on hover
+          },
+          font: { color: '#202124', size: 12, face: 'Roboto' },
+          borderWidth: 1.5,
+        })));
+
+        const edges = new vis.DataSet(data.edges.map(e => ({
+          from:   e.from,
+          to:     e.to,
+          arrows: { to: { enabled: true, scaleFactor: 0.5 } },
+          color:  { color: '#dadce0', highlight: '#ea4335', hover: '#34a853' }, // Gray, Red, Green
+          width:  1,
+          smooth: { type: 'curvedCW', roundness: 0.2 },
+        })));
+
+        const options = {
+          physics: {
+            forceAtlas2Based: {
+              gravitationalConstant: -60,
+              centralGravity: 0.005,
+              springLength: 120,
+              springConstant: 0.08,
+            },
+            maxVelocity: 50,
+            solver: 'forceAtlas2Based',
+            timestep: 0.35,
+            stabilization: { iterations: 150 },
+          },
+          interaction: {
+            hover: true,
+            tooltipDelay: 150,
+            zoomView: true,
+            dragView: true,
+          },
+          nodes: { shape: 'dot', size: 10 },
+        };
+
+        if (network) network.destroy();
+        network = new vis.Network(container, { nodes, edges }, options);
+
+        network.on('click', params => {
+          if (params.nodes.length) window.open(params.nodes[0], '_blank');
+        });
+
+        document.getElementById('graph-info').textContent =
+          `Displayed ${data.nodes.length} nodes, ${data.edges.length} edges. All paths trace to seed URL.`;
+      });
+  }
+
+  loadGraph();
+</script>
+{% endblock %}
