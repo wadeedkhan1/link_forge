@@ -1,55 +1,64 @@
 {% extends "base.html" %}
-{% block title %}Results - Crawler{% endblock %}
+{% block title %}Results — LinkForge{% endblock %}
 
 {% block content %}
-<div class="top-search-bar">
-  <div class="top-search-logo">
-    <span class="g-blue">C</span><span class="g-red">r</span><span class="g-yellow">a</span><span
-      class="g-blue">w</span><span class="g-green">l</span><span class="g-red">e</span><span class="g-yellow">r</span>
-  </div>
-  <form method="GET" action="{{ url_for('search') }}" style="flex:1; max-width:600px; display:flex">
-    <input type="text" name="q" class="search-input"
-      style="border:1px solid #dfe1e5; border-radius:24px; padding:10px 20px; width:100%; box-shadow:0 1px 6px rgba(32,33,36,.28)"
-      placeholder="Search the index...">
+<div class="search-page-bar">
+  <a href="{{ url_for('index') }}" class="nav-brand" style="text-decoration:none;">
+    <span class="nav-brand-icon">⚡</span>
+    <span>LinkForge</span>
+  </a>
+  <form method="GET" action="{{ url_for('search') }}" class="search-box" style="max-width:500px;">
+    <svg class="search-icon" focusable="false" viewBox="0 0 24 24">
+      <path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"></path>
+    </svg>
+    <input type="text" name="q" class="search-input" placeholder="Search indexed pages..." autocomplete="off">
   </form>
 </div>
 
-<div class="container" style="max-width:800px; margin:0 100px;">
-  <div style="color:var(--text-muted); font-size:14px; margin-bottom:20px;">
-    About {{ total }} results (active DB)
+<div class="container" style="max-width:860px;">
+  <div class="info-text">About {{ total }} pages indexed across all sessions</div>
+
+  <div class="export-row" style="margin-bottom:20px;">
+    <a href="{{ url_for('export_json_route') }}" class="btn btn-ghost">📦 Export JSON</a>
+    <a href="{{ url_for('export_csv_route') }}" class="btn btn-ghost">📊 Export CSV</a>
   </div>
 
-  <div class="results-container" style="margin-top:0">
-    {% for page in pages %}
-    <div class="result-item">
-      <div class="result-url">
-        <cite>{{ page['url'] }}</cite>
-        <span class="status-badge"
-          style="background:{% if page['status_code']==200 %}#e6f4ea{% else %}#fce8e6{% endif %}; color:{% if page['status_code']==200 %}#137333{% else %}#c5221f{% endif %}">
-          HTTP {{ page['status_code'] }}
-        </span>
-        <span class="status-badge">Depth {{ page['depth'] }}</span>
-      </div>
-      <a href="{{ page['url'] }}" target="_blank" class="result-title">{{ page['title'] or page['url'] }}</a>
-      <div class="result-snippet">
-        {{ (page['text'] or '')[:160] }}...
-      </div>
+  {% for page in pages %}
+  <div class="result-item">
+    <div class="result-url">
+      <cite>{{ page['url'] }}</cite>
+      {% if page['status_code'] == 200 %}
+      <span class="badge badge-success">{{ page['status_code'] }}</span>
+      {% else %}
+      <span class="badge badge-danger">{{ page['status_code'] }}</span>
+      {% endif %}
+      <span class="badge">Depth {{ page['depth'] }}</span>
     </div>
-    {% endfor %}
+    <a href="{{ page['url'] }}" target="_blank" rel="noopener" class="result-title">{{ page['title'] or page['url'] }}</a>
+    <div class="result-snippet">{{ (page['text'] or '')[:180] }}{% if (page['text'] or '')|length > 180 %}…{% endif %}</div>
   </div>
+  {% endfor %}
 
+  {% if not pages %}
+  <div class="empty-state">
+    <div class="empty-state-icon">📭</div>
+    <div class="empty-state-text">No pages indexed yet</div>
+    <div class="empty-state-sub">Run a crawl from the home page to start indexing</div>
+  </div>
+  {% endif %}
+
+  {% if total_pages > 1 %}
   <div class="pagination">
     {% if page_num > 1 %}
-    <a href="?page={{ page_num - 1 }}">Previous</a>
+    <a href="?page={{ page_num - 1 }}">← Prev</a>
     {% endif %}
-
     {% for p in page_range %}
     <a href="?page={{ p }}" class="{% if p == page_num %}active{% endif %}">{{ p }}</a>
     {% endfor %}
-
-    {% if page_num < total_pages %} <a href="?page={{ page_num + 1 }}">Next</a>
-      {% endif %}
+    {% if page_num < total_pages %}
+    <a href="?page={{ page_num + 1 }}">Next →</a>
+    {% endif %}
   </div>
-
+  {% endif %}
 </div>
 {% endblock %}

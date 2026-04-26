@@ -1,48 +1,49 @@
 {% extends "base.html" %}
-{% block title %}Search: {{ keyword or '' }} - Crawler{% endblock %}
+{% block title %}Search{% if keyword %}: {{ keyword }}{% endif %} — LinkForge{% endblock %}
 
 {% block content %}
-<div class="top-search-bar">
-  <div class="top-search-logo">
-    <span class="g-blue">C</span><span class="g-red">r</span><span class="g-yellow">a</span><span class="g-blue">w</span><span class="g-green">l</span><span class="g-red">e</span><span class="g-yellow">r</span>
-  </div>
-  <form method="GET" action="{{ url_for('search') }}" style="flex:1; max-width:600px; display:flex">
-    <input type="text" name="q" id="search-input" value="{{ keyword }}" class="search-input" style="border:1px solid #dfe1e5; border-radius:24px; padding:10px 20px; width:100%; box-shadow:0 1px 6px rgba(32,33,36,.28)" placeholder="Search the index..." autofocus autocomplete="off">
+<div class="search-page-bar">
+  <a href="{{ url_for('index') }}" class="nav-brand" style="text-decoration:none;">
+    <span class="nav-brand-icon">⚡</span>
+    <span>LinkForge</span>
+  </a>
+  <form method="GET" action="{{ url_for('search') }}" class="search-box" style="max-width:500px;">
+    <svg class="search-icon" focusable="false" viewBox="0 0 24 24">
+      <path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"></path>
+    </svg>
+    <input type="text" name="q" id="search-input" value="{{ keyword }}" class="search-input"
+           placeholder="Search indexed pages..." autofocus autocomplete="off">
   </form>
 </div>
 
-<div class="container" style="max-width:800px; margin:0 100px;">
+<div class="container" style="max-width:860px;">
   {% if keyword %}
-    <div style="color:var(--text-muted); font-size:14px; margin-bottom:20px;">
-      About {{ results|length }} results for "{{ keyword }}"
-    </div>
+    <div class="info-text">{{ results|length }} result{{ 's' if results|length != 1 }} for "{{ keyword }}"</div>
 
     {% if results %}
-      <div class="results-container" style="margin-top:0">
-        {% for r in results %}
-        <div class="result-item">
-          <div class="result-url">
-            <cite>{{ r['url'] }}</cite> 
-            <span class="status-badge">Matches: {{ r['count'] }}</span>
-          </div>
-          <a href="{{ r['url'] }}" target="_blank" class="result-title">{{ r['title'] or r['url'] }}</a>
-          <div class="result-snippet">
-            {{ r['text'] }}...
-          </div>
+      {% for r in results %}
+      <div class="result-item">
+        <div class="result-url">
+          <cite>{{ r['url'] }}</cite>
+          <span class="badge badge-success">{{ r['count'] }} matches</span>
         </div>
-        {% endfor %}
+        <a href="{{ r['url'] }}" target="_blank" rel="noopener" class="result-title">{{ r['title'] or r['url'] }}</a>
+        <div class="result-snippet">{{ r['text'][:180] }}{% if r['text']|length > 180 %}…{% endif %}</div>
       </div>
+      {% endfor %}
     {% else %}
-      <div style="margin-top:40px;">
-        <p style="font-size:16px;">Your search - <strong>{{ keyword }}</strong> - did not match any documents.</p>
-        <p style="margin-top:15px; color:var(--text-muted)">Suggestions:</p>
-        <ul style="margin-left:30px; margin-top:10px; color:var(--text-muted)">
-          <li>Make sure all words are spelled correctly.</li>
-          <li>Try different keywords.</li>
-          <li>Try more general keywords.</li>
-        </ul>
+      <div class="empty-state">
+        <div class="empty-state-icon">🔎</div>
+        <div class="empty-state-text">No matches for "{{ keyword }}"</div>
+        <div class="empty-state-sub">Try different keywords or run a new crawl</div>
       </div>
     {% endif %}
+  {% else %}
+    <div class="empty-state">
+      <div class="empty-state-icon">🔍</div>
+      <div class="empty-state-text">Search your indexed pages</div>
+      <div class="empty-state-sub">Enter a keyword above to search across all crawled content</div>
+    </div>
   {% endif %}
 </div>
 {% endblock %}

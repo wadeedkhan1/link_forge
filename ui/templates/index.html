@@ -1,46 +1,71 @@
 {% extends "base.html" %}
-{% block title %}Crawler{% endblock %}
+{% block title %}LinkForge — Web Crawler{% endblock %}
 
 {% block content %}
-<div class="container google-home">
-  <div class="google-logo">
-    <span class="g-blue">C</span><span class="g-red">r</span><span class="g-yellow">a</span><span
-      class="g-blue">w</span><span class="g-green">l</span><span class="g-red">e</span><span class="g-yellow">r</span>
-  </div>
+<div class="container hero">
+  <h1 class="hero-title">LinkForge</h1>
+  <p class="hero-subtitle">Discover, crawl, and analyze the web with AI-powered search</p>
 
   <form method="POST" action="/crawl" id="crawl-form" class="search-form">
     <div class="search-box">
       <svg class="search-icon" focusable="false" viewBox="0 0 24 24">
-        <path
-          d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z">
-        </path>
+        <path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"></path>
       </svg>
-      <input type="text" name="prompt" id="prompt" class="search-input" placeholder="Enter a topic (e.g. Best games of 2026)" required autofocus>
-      <span id="crawl-status-pill" class="crawl-pill crawl-pill--ready" title="Crawler status">● Ready</span>
+      <input type="text" name="prompt" id="prompt" class="search-input"
+             placeholder="Enter a topic to crawl (e.g. Best games of 2026)" required autofocus>
+      <span id="crawl-status-pill" class="crawl-pill crawl-pill--ready" title="Crawler status">● READY</span>
     </div>
 
-    <div class="search-buttons">
-      <select name="depth" class="btn" style="border:1px solid transparent; background:#f8f9fa;">
-        <option value="1">Shallow</option>
-        <option value="2" selected>Medium</option>
-        <option value="3">Deep</option>
+    <div class="controls-row">
+      <select name="depth" class="select-styled" id="depth-select">
+        <option value="1">Shallow (depth 1)</option>
+        <option value="2" selected>Medium (depth 2)</option>
+        <option value="3">Deep (depth 3)</option>
       </select>
-      <button type="submit" class="btn" id="crawl-btn">Search</button>
-      <button type="button" class="btn" id="stop-btn" style="display: none; background-color: #fce8e6; color: #c5221f; border-color: #fce8e6;">Stop</button>
+      <button type="submit" class="btn btn-primary" id="crawl-btn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        Search &amp; Crawl
+      </button>
+      <button type="button" class="btn btn-danger" id="stop-btn" style="display:none;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
+        Stop
+      </button>
     </div>
   </form>
 
-  <div class="results-container" id="results-container">
-    <div class="status-indicator">
-      <span id="status-text">{{ crawl_status.message }}</span>
-      <span class="status-badge" id="page-count">{{ stats.page_count }} results</span>
+  <!-- Quick Stats -->
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-value" id="stat-pages">{{ stats.page_count }}</div>
+      <div class="stat-label">Pages Indexed</div>
     </div>
-
-    <div id="live-feed">
-      <!-- Live results inject here -->
+    <div class="stat-card">
+      <div class="stat-value">{{ stats.top_words|length }}</div>
+      <div class="stat-label">Top Keywords</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">{{ stats.most_linked|length }}</div>
+      <div class="stat-label">Hub Pages</div>
     </div>
   </div>
 
+  <!-- Live Results Feed -->
+  <div class="results-section" id="results-container">
+    <div class="section-header">
+      <span class="section-title" id="status-text">{{ crawl_status.message }}</span>
+      <span class="section-badge" id="page-count">{{ stats.page_count }} results</span>
+    </div>
+
+    <div id="live-feed">
+      <!-- Live results injected here by JS -->
+    </div>
+
+    <div class="empty-state" id="empty-state">
+      <div class="empty-state-icon">🔍</div>
+      <div class="empty-state-text">No results yet</div>
+      <div class="empty-state-sub">Enter a topic above to start crawling</div>
+    </div>
+  </div>
 </div>
 {% endblock %}
 
@@ -49,22 +74,33 @@
   let lastCount = {{ stats.page_count }};
   let isRunning = {{ 'true' if crawl_status.running else 'false' }};
 
+  const feed = document.getElementById('live-feed');
+  const emptyState = document.getElementById('empty-state');
+
+  function toggleEmpty() {
+    emptyState.style.display = feed.children.length === 0 ? 'block' : 'none';
+  }
+
   function addResultItem(page) {
-    const feed = document.getElementById('live-feed');
-    const existing = document.getElementById('page-' + page.url);
+    const existing = document.getElementById('page-' + CSS.escape(page.url));
     if (existing) return;
 
+    const statusClass = page.status_code === 200 ? 'badge-success' : 'badge-danger';
     const item = document.createElement('div');
     item.className = 'result-item';
     item.id = 'page-' + page.url;
+    item.style.animationDelay = '0s';
     item.innerHTML = `
       <div class="result-url">
-        <cite>${page.url}</cite> <span class="status-badge">Depth ${page.depth}</span>
+        <cite>${page.url}</cite>
+        <span class="badge">Depth ${page.depth}</span>
+        <span class="badge ${statusClass}">${page.status_code}</span>
       </div>
-      <a href="${page.url}" target="_blank" class="result-title">${page.title}</a>
-      <div class="result-snippet">HTTP Status: ${page.status_code}. Indexed in active session.</div>
+      <a href="${page.url}" target="_blank" rel="noopener" class="result-title">${page.title}</a>
+      <div class="result-snippet">Indexed in active session.</div>
     `;
     feed.prepend(item);
+    toggleEmpty();
   }
 
   function updatePill(running, message) {
@@ -72,33 +108,32 @@
     if (!pill) return;
     if (running) {
       const match = message.match(/https?:\/\/([^\s/()]+)/);
-      const domain = match ? match[1] : 'domain';
-      pill.textContent = '● Crawling ' + domain + '…';
+      const domain = match ? match[1] : 'web';
+      pill.textContent = '● CRAWLING ' + domain;
       pill.className = 'crawl-pill crawl-pill--busy';
       pill.title = message;
     } else {
-      pill.textContent = '● Ready';
+      pill.textContent = '● READY';
       pill.className = 'crawl-pill crawl-pill--ready';
-      pill.title = 'Crawler is idle — ready to start';
+      pill.title = 'Crawler is idle';
     }
   }
 
   function pollStatus() {
     fetch('/status').then(r => r.json()).then(data => {
       document.getElementById('status-text').textContent = data.message;
-      document.getElementById('page-count').textContent = data.page_count + " results";
-
+      document.getElementById('page-count').textContent = data.page_count + ' results';
+      document.getElementById('stat-pages').textContent = data.page_count;
       document.getElementById('crawl-btn').disabled = data.running;
-      
+
       if (data.running) {
         document.getElementById('crawl-btn').style.display = 'none';
-        document.getElementById('stop-btn').style.display = 'inline-block';
+        document.getElementById('stop-btn').style.display = 'inline-flex';
       } else {
-        document.getElementById('crawl-btn').style.display = 'inline-block';
-        document.getElementById('crawl-btn').textContent = 'Search';
+        document.getElementById('crawl-btn').style.display = 'inline-flex';
         document.getElementById('stop-btn').style.display = 'none';
       }
-      
+
       updatePill(data.running, data.message);
 
       if (data.page_count !== lastCount) {
@@ -115,9 +150,11 @@
 
   function fetchRecent() {
     fetch('/api/recent?n=20').then(r => r.json()).then(pages => {
-      const feed = document.getElementById('live-feed');
       feed.innerHTML = '';
-      pages.forEach(addResultItem);
+      pages.forEach((p, i) => {
+        setTimeout(() => addResultItem(p), i * 40);
+      });
+      setTimeout(toggleEmpty, pages.length * 40 + 50);
     });
   }
 
@@ -127,24 +164,19 @@
   document.getElementById('crawl-form').addEventListener('submit', function () {
     isRunning = true;
     document.getElementById('crawl-btn').disabled = true;
-    document.getElementById('crawl-btn').textContent = 'Searching...';
-    document.getElementById('live-feed').innerHTML = '';
+    feed.innerHTML = '';
+    toggleEmpty();
     const prompt = document.getElementById('prompt').value;
     updatePill(true, 'Searching for: ' + prompt);
     setTimeout(pollStatus, 1000);
   });
 
   document.getElementById('stop-btn').addEventListener('click', function() {
-    this.textContent = 'Stopping...';
     this.disabled = true;
-    fetch('/stop', { method: 'POST' }).then(r => r.json()).then(data => {
+    fetch('/stop', { method: 'POST' }).then(r => r.json()).then(() => {
       this.disabled = false;
-      this.textContent = 'Stop';
       pollStatus();
-    }).catch(err => {
-      this.disabled = false;
-      this.textContent = 'Stop';
-    });
+    }).catch(() => { this.disabled = false; });
   });
 </script>
 {% endblock %}
