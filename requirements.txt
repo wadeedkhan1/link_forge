@@ -19,3 +19,4 @@ pandas==2.2.2
 # --- Utilities ---
 fake-useragent==1.5.1
 python-dotenv==1.0.1
+duckduckgo_search==5.0.0

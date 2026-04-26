@@ -7,12 +7,12 @@ from storage.db import get_all_pages, get_all_links
 DATA_DIR = os.path.join(os.path.dirname(__file__), '..', 'data')
 
 
-def export_json(filename: str = "pages.json") -> str:
+def export_json(filename: str = "pages.json", session_id: str = None) -> str:
     """
     Exports all crawled pages to a JSON file.
     Returns the path to the saved file.
     """
-    pages = get_all_pages()
+    pages = get_all_pages(session_id=session_id)
     data = [
         {
             "id":          p["id"],
@@ -33,12 +33,12 @@ def export_json(filename: str = "pages.json") -> str:
     return path
 
 
-def export_csv(filename: str = "pages.csv") -> str:
+def export_csv(filename: str = "pages.csv", session_id: str = None) -> str:
     """
     Exports all crawled pages to a CSV file using pandas.
     Returns the path to the saved file.
     """
-    pages = get_all_pages()
+    pages = get_all_pages(session_id=session_id)
     rows = [
         {
             "id":          p["id"],

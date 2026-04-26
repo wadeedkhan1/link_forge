@@ -38,8 +38,12 @@ class WebSpider(scrapy.Spider):
     def __init__(self, seed_url=None, depth=2, session_id="legacy", *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        # Set seed URL (default to books.toscrape.com)
-        self.seed_url = seed_url or "http://books.toscrape.com/"
+        # Set seed URLs (comma separated)
+        if seed_url:
+            self.seed_urls = [u.strip() for u in seed_url.split(',')]
+        else:
+            self.seed_urls = ["http://books.toscrape.com/"]
+            
         self.session_id = session_id
 
         # Set max depth (override settings.py DEPTH_LIMIT)
@@ -47,14 +51,18 @@ class WebSpider(scrapy.Spider):
             "DEPTH_LIMIT": int(depth)
         }
 
-        # Extract domain from seed URL so we don't crawl external sites
-        parsed = urlparse(self.seed_url)
-        self.allowed_domains = [parsed.netloc]  # e.g. ["books.toscrape.com"]
-        self.start_urls = [self.seed_url]
+        # Extract domains from seed URLs so we don't crawl external sites
+        self.allowed_domains = []
+        for url in self.seed_urls:
+            parsed = urlparse(url)
+            if parsed.netloc and parsed.netloc not in self.allowed_domains:
+                self.allowed_domains.append(parsed.netloc)
+        
+        self.start_urls = self.seed_urls
 
         self._seen = Deduplicator()
 
-        self.logger.info(f"[Spider] Seed     : {self.seed_url}")
+        self.logger.info(f"[Spider] Seed     : {self.seed_urls}")
         self.logger.info(f"[Spider] Domain   : {self.allowed_domains}")
         self.logger.info(f"[Spider] Max depth: {depth}")
 
@@ -92,6 +100,13 @@ class WebSpider(scrapy.Spider):
 
             # Skip external domains (protocol scheme was already filtered in parse_html)
             if not any(parsed_url.netloc.endswith(d) for d in self.allowed_domains):
+                continue
+
+            # Limit depth for social media platforms
+            social_media_domains = {"youtube.com", "facebook.com", "reddit.com", "instagram.com", "twitter.com", "x.com", "tiktok.com", "linkedin.com"}
+            is_social_media = any(parsed_url.netloc.endswith(d) for d in social_media_domains)
+            
+            if is_social_media and current_depth >= 1:
                 continue
 
             # Save the link edge (for the link graph)

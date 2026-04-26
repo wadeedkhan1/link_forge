@@ -15,17 +15,18 @@
           d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z">
         </path>
       </svg>
-      <input type="url" name="seed_url" id="seed_url" class="search-input" required autofocus>
+      <input type="text" name="prompt" id="prompt" class="search-input" placeholder="Enter a topic (e.g. Best games of 2026)" required autofocus>
       <span id="crawl-status-pill" class="crawl-pill crawl-pill--ready" title="Crawler status">● Ready</span>
     </div>
 
     <div class="search-buttons">
       <select name="depth" class="btn" style="border:1px solid transparent; background:#f8f9fa;">
-        <option value="1">Depth 1</option>
-        <option value="2" selected>Depth 2</option>
-        <option value="3">Depth 3</option>
+        <option value="1">Shallow</option>
+        <option value="2" selected>Medium</option>
+        <option value="3">Deep</option>
       </select>
       <button type="submit" class="btn" id="crawl-btn">Search</button>
+      <button type="button" class="btn" id="stop-btn" style="display: none; background-color: #fce8e6; color: #c5221f; border-color: #fce8e6;">Stop</button>
     </div>
   </form>
 
@@ -88,6 +89,16 @@
       document.getElementById('page-count').textContent = data.page_count + " results";
 
       document.getElementById('crawl-btn').disabled = data.running;
+      
+      if (data.running) {
+        document.getElementById('crawl-btn').style.display = 'none';
+        document.getElementById('stop-btn').style.display = 'inline-block';
+      } else {
+        document.getElementById('crawl-btn').style.display = 'inline-block';
+        document.getElementById('crawl-btn').textContent = 'Search';
+        document.getElementById('stop-btn').style.display = 'none';
+      }
+      
       updatePill(data.running, data.message);
 
       if (data.page_count !== lastCount) {
@@ -118,9 +129,22 @@
     document.getElementById('crawl-btn').disabled = true;
     document.getElementById('crawl-btn').textContent = 'Searching...';
     document.getElementById('live-feed').innerHTML = '';
-    const url = document.getElementById('seed_url').value;
-    updatePill(true, 'Crawling ' + url);
+    const prompt = document.getElementById('prompt').value;
+    updatePill(true, 'Searching for: ' + prompt);
     setTimeout(pollStatus, 1000);
+  });
+
+  document.getElementById('stop-btn').addEventListener('click', function() {
+    this.textContent = 'Stopping...';
+    this.disabled = true;
+    fetch('/stop', { method: 'POST' }).then(r => r.json()).then(data => {
+      this.disabled = false;
+      this.textContent = 'Stop';
+      pollStatus();
+    }).catch(err => {
+      this.disabled = false;
+      this.textContent = 'Stop';
+    });
   });
 </script>
 {% endblock %}

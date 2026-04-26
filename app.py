@@ -23,6 +23,7 @@ import datetime
 sys.path.insert(0, os.path.dirname(__file__))
 
 from flask import Flask, render_template, request, jsonify, redirect, url_for, send_file
+import requests
 
 from storage.db import init_db, get_all_pages, get_page_count, search_pages, get_latest_session
 from analysis.keyword_search import count_keyword_frequency, top_words
@@ -33,6 +34,7 @@ app = Flask(__name__, template_folder='ui/templates', static_folder='ui/static')
 
 # Global crawl state
 crawl_status = {"running": False, "message": "Idle", "session_id": None}
+current_process = None
 
 # ── Routes ─────────────────────────────────────────────────────────────────────
 
@@ -64,7 +66,7 @@ def start_crawl():
     if crawl_status["running"]:
         return jsonify({"error": "A crawl is already running"}), 400
 
-    seed_url = request.form.get("seed_url", "http://books.toscrape.com/").strip()
+    prompt = request.form.get("prompt", "").strip()
     depth    = request.form.get("depth", "1").strip()
 
     # Validate depth
@@ -73,18 +75,45 @@ def start_crawl():
     except ValueError:
         depth = 1
 
+    if not prompt:
+        return jsonify({"error": "Prompt is required"}), 400
+
+    # Call Serper API
+    api_url = "https://google.serper.dev/search"
+    payload = {"q": prompt}
+    headers = {
+        'X-API-KEY': 'a14bc17a7aa382b5686185eb12245822341b0d15',
+        'Content-Type': 'application/json'
+    }
+
+    try:
+        response = requests.post(api_url, headers=headers, json=payload)
+        response.raise_for_status()
+        data = response.json()
+        organic_results = data.get("organic", [])
+        
+        # Extract up to 5 links from the search results
+        seed_urls = [result["link"] for result in organic_results if "link" in result][:5]
+        if not seed_urls:
+             return jsonify({"error": "No links found for the prompt"}), 400
+             
+        seed_url_arg = ",".join(seed_urls)
+        
+    except Exception as e:
+        return jsonify({"error": f"Failed to get links from Serper: {str(e)}"}), 500
+
     session_id = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     crawl_status["session_id"] = session_id
 
     def run_crawl():
-        global crawl_status
-        crawl_status = {"running": True, "message": f"Crawling {seed_url} (depth={depth})...", "session_id": session_id}
+        global crawl_status, current_process
+        crawl_status = {"running": True, "message": f"Crawling results for '{prompt}' (depth={depth})...", "session_id": session_id}
 
         project_root = os.path.dirname(__file__)
 
         cmd = [
             sys.executable, "-m", "scrapy", "crawl", "web_spider",
-            "-a", f"seed_url={seed_url}",
+            "-a", f"seed_url={seed_url_arg}",
             "-a", f"depth={depth}",
             "-a", f"session_id={session_id}",
             "-s", "SCRAPY_SETTINGS_MODULE=spiders.settings",
@@ -93,15 +122,37 @@ def start_crawl():
         ]
 
         try:
-            subprocess.run(cmd, cwd=project_root, check=True)
-            crawl_status = {"running": False, "message": f"Done! Indexed {get_page_count(session_id=session_id)} pages.", "session_id": session_id}
-        except subprocess.CalledProcessError as e:
-            crawl_status = {"running": False, "message": f"Crawl failed: {e}", "session_id": session_id}
+            current_process = subprocess.Popen(cmd, cwd=project_root)
+            current_process.wait()
+            
+            if current_process.returncode == 0:
+                crawl_status = {"running": False, "message": f"Done! Indexed {get_page_count(session_id=session_id)} pages.", "session_id": session_id}
+            else:
+                # If stopped forcefully, the return code is non-zero
+                if crawl_status.get("message") != "Crawl stopped.":
+                    crawl_status = {"running": False, "message": f"Crawl stopped or failed (code {current_process.returncode})", "session_id": session_id}
+        except Exception as e:
+            crawl_status = {"running": False, "message": f"Crawl error: {e}", "session_id": session_id}
+        finally:
+            current_process = None
 
     thread = threading.Thread(target=run_crawl, daemon=True)
     thread.start()
 
     return redirect(url_for("index"))
+
+@app.route("/stop", methods=["POST"])
+def stop_crawl():
+    global current_process, crawl_status
+    if current_process:
+        try:
+            current_process.terminate()
+            crawl_status["running"] = False
+            crawl_status["message"] = "Crawl stopped."
+            return jsonify({"success": True})
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+    return jsonify({"error": "No crawl running"}), 400
 
 
 @app.route("/status")
@@ -138,14 +189,13 @@ def results():
     per_page  = 20
 
     all_pages = get_all_pages()
-    all_pages.reverse()  # View newest results first (active session)
+    all_pages.reverse()  
     total     = len(all_pages)
     start     = (page_num - 1) * per_page
     end       = start + per_page
     pages     = all_pages[start:end]
     total_pages = (total + per_page - 1) // per_page
 
-    # Compute visible page numbers in Python (safer than Jinja2 filter tricks)
     page_start = max(1, page_num - 2)
     page_end   = min(total_pages + 1, page_num + 3)
     page_range = list(range(page_start, page_end))
@@ -187,13 +237,15 @@ def api_graph():
 
 @app.route("/export/json")
 def export_json_route():
-    path = export_json()
+    sid = crawl_status.get("session_id")
+    path = export_json(session_id=sid)
     return send_file(os.path.abspath(path), as_attachment=True, download_name="pages.json")
 
 
 @app.route("/export/csv")
 def export_csv_route():
-    path = export_csv()
+    sid = crawl_status.get("session_id")
+    path = export_csv(session_id=sid)
     return send_file(os.path.abspath(path), as_attachment=True, download_name="pages.csv")
 
 
