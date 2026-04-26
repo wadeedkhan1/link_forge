@@ -24,9 +24,9 @@ def parse_html(html_content, base_url):
             metadata[name] = content.strip()
             
     # 3. Extract visible text
-    for tag in soup(['script', 'style', 'noscript']):
+    for tag in soup(['script', 'style', 'noscript', 'nav', 'footer', 'header', 'aside']):
         tag.decompose()
-    text = soup.get_text(separator='\n', strip=True)
+    text = soup.get_text(separator=' ', strip=True)
     
     # 4. Extract hyperlinks
     links = []

@@ -24,6 +24,24 @@ from urllib.parse import urljoin, urlparse
 from crawler.parser import parse_html
 from spiders.items import PageItem, LinkItem
 from storage.deduplicator import Deduplicator
+import string
+from rank_bm25 import BM25Plus
+
+def tokenize(text):
+    text = text.lower()
+    for p in string.punctuation:
+        text = text.replace(p, ' ')
+    tokens = text.split()
+    stop_words = {
+        "this", "that", "with", "have", "from", "they", "will",
+        "been", "were", "said", "each", "which", "their", "there",
+        "what", "when", "more", "also", "into", "than", "then",
+        "some", "would", "about", "your", "just", "book", "books",
+        "a", "an", "the", "and", "or", "but", "if", "because", "as",
+        "of", "at", "by", "for", "in", "out", "on", "to", "up", "is",
+        "are", "was", "be", "it", "i", "we", "you", "he", "she"
+    }
+    return [t for t in tokens if t not in stop_words]
 
 
 class WebSpider(scrapy.Spider):
@@ -35,8 +53,15 @@ class WebSpider(scrapy.Spider):
 
     name = "web_spider"
 
-    def __init__(self, seed_url=None, depth=2, session_id="legacy", *args, **kwargs):
+    def __init__(self, seed_url=None, depth=2, session_id="legacy", prompt="", *args, **kwargs):
         super().__init__(*args, **kwargs)
+        
+        self.prompt = prompt
+        self.prompt_tokens = tokenize(self.prompt)
+        # Build BM25 corpus from the user query ONCE to avoid rebuilding for every page
+        self.bm25 = BM25Plus([self.prompt_tokens]) if self.prompt_tokens else None
+        self.bm25_threshold = 0.1  # Allow low scores but block completely irrelevant pages
+
 
         # Set seed URLs (comma separated)
         if seed_url:
@@ -81,6 +106,19 @@ class WebSpider(scrapy.Spider):
 
         # Use our centralized parser to get text, title, links, images, and metadata!
         parsed_data = parse_html(response.text, url)
+        
+        # BM25 relevance check BEFORE saving or following links
+        if self.bm25:
+            page_tokens = tokenize(parsed_data["text"])
+            if not page_tokens:
+                self.logger.info(f"[Spider] Page {url} rejected: no text")
+                return
+            
+            bm25_score = self.bm25.get_scores(page_tokens)[0]
+            if bm25_score < self.bm25_threshold:
+                self.logger.info(f"[Spider] Page {url} rejected due to low BM25 score ({bm25_score:.2f})")
+                return
+            self.logger.info(f"[Spider] Page {url} accepted with BM25 score {bm25_score:.2f}")
 
         # Yield page data → DatabasePipeline → SQLite
         yield PageItem(

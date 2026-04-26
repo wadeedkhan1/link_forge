@@ -116,6 +116,7 @@ def start_crawl():
             "-a", f"seed_url={seed_url_arg}",
             "-a", f"depth={depth}",
             "-a", f"session_id={session_id}",
+            "-a", f"prompt={prompt}",
             "-s", "SCRAPY_SETTINGS_MODULE=spiders.settings",
             "-s", f"DEPTH_LIMIT={depth}",
             "--nolog",
