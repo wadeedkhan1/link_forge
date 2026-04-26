@@ -1,49 +1,26 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="LinkForge — AI-powered web crawler with real-time results, link graph visualization, and data export.">
-  <title>{% block title %}LinkForge{% endblock %}</title>
+  <title>{% block title %}Crawler{% endblock %}</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
   {% block head %}{% endblock %}
 </head>
 <body>
 
   <nav class="navbar">
-    <a href="{{ url_for('index') }}" class="nav-brand">
-      <span class="nav-brand-icon">⚡</span>
-      <span>LinkForge</span>
-    </a>
-    <div class="nav-links">
-      <a href="{{ url_for('index') }}" class="nav-link" id="nav-home">Home</a>
-      <a href="{{ url_for('results') }}" class="nav-link" id="nav-results">Results</a>
-      <a href="{{ url_for('graph') }}" class="nav-link" id="nav-graph">Graph</a>
-      <a href="{{ url_for('export_csv_route') }}" class="nav-link" id="nav-export">Export</a>
-      <button class="theme-toggle" id="theme-toggle" title="Toggle theme" aria-label="Toggle dark mode">🌙</button>
+    <div class="nav-links" style="margin-left: auto;">
+      <a href="{{ url_for('index') }}" class="nav-link">Home</a>
+      <a href="{{ url_for('results') }}" class="nav-link">Results</a>
+      <a href="{{ url_for('search') }}" class="nav-link">Search</a>
+      <a href="{{ url_for('graph') }}" class="nav-link">Graph</a>
+      <a href="{{ url_for('export_csv_route') }}" class="nav-link">Export CSV</a>
     </div>
   </nav>
 
   {% block content %}{% endblock %}
 
-  <script>
-    // Theme toggle
-    (function() {
-      const toggle = document.getElementById('theme-toggle');
-      const html = document.documentElement;
-      const saved = localStorage.getItem('theme') || 'dark';
-      html.setAttribute('data-theme', saved);
-      toggle.textContent = saved === 'dark' ? '☀️' : '🌙';
-
-      toggle.addEventListener('click', () => {
-        const current = html.getAttribute('data-theme');
-        const next = current === 'dark' ? 'light' : 'dark';
-        html.setAttribute('data-theme', next);
-        localStorage.setItem('theme', next);
-        toggle.textContent = next === 'dark' ? '☀️' : '🌙';
-      });
-    })();
-  </script>
   {% block scripts %}{% endblock %}
 </body>
 </html>
